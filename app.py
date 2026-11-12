@@ -381,7 +381,7 @@ def home():
 # EXECUÇÃO
 # ==========================================
 
-if __name__ == "__main__":
+if False:  # Alterar para True para executar localmente
 
     app.run(
         host="0.0.0.0",
