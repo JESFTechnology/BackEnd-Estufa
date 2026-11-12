@@ -19,8 +19,8 @@ CORS(app)
 
 FIREBASE_URL = "https://estufaescritoriojwl-default-rtdb.firebaseio.com/estufa/historico.json"
 
-MODEL_FILE = "model.pkl"
-CONFIG_FILE = "config.pkl"
+MODEL_FILE = "/tmp/model.pkl"
+CONFIG_FILE = "/tmp/config.pkl"
 
 JANELA = 3  # Quantidade de leituras anteriores utilizadas
 
