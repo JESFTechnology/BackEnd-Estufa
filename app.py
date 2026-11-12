@@ -29,6 +29,17 @@ JANELA = 3  # Quantidade de leituras anteriores utilizadas
 # BUSCAR DADOS DO FIREBASE
 # ==========================================
 
+def timestamp_do_id(firebase_id):
+
+    alfabeto = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+
+    timestamp = 0
+
+    for caractere in firebase_id[:8]:
+        timestamp = timestamp * 64 + alfabeto.index(caractere)
+
+    return pd.to_datetime(timestamp, unit="ms", utc=True)
+
 def buscar_dados():
 
     resposta = requests.get(FIREBASE_URL, timeout=20)
@@ -41,27 +52,18 @@ def buscar_dados():
 
     registros = []
 
-    if isinstance(dados, dict):
-        registros = list(dados.values())
+    for firebase_id, valores in dados.items():
 
-    elif isinstance(dados, list):
-        registros = dados
+        if not isinstance(valores, dict):
+            continue
 
-    else:
-        raise ValueError("Formato de histórico inválido.")
+        registro = valores.copy()
 
-    # Identificar registros válidos
-    registros = [
-        r for r in registros
-        if isinstance(r, dict)
-    ]
+        registro["timestamp"] = timestamp_do_id(firebase_id)
 
-    if not registros:
-        raise ValueError("Nenhum registro válido encontrado.")
+        registros.append(registro)
 
     return registros
-
-
 # ==========================================
 # TRATAMENTO DOS DADOS
 # ==========================================
@@ -70,27 +72,21 @@ def preparar_dados(registros):
 
     df = pd.DataFrame(registros)
 
-    # Possíveis nomes da coluna de data
-    campos_data = [
-        "timestamp",
-        "data",
-        "dataHora",
-        "datetime",
-        "created_at",
-        "hora",
-        "time"
-    ]
+    # O timestamp já vem convertido do ID do Firebase
+    if "timestamp" not in df.columns:
+        raise ValueError("Não foi possível identificar o timestamp.")
 
-    campo_tempo = next(
-        (c for c in campos_data if c in df.columns),
-        None
+    df["_tempo"] = pd.to_datetime(
+        df["timestamp"],
+        utc=True,
+        errors="coerce"
     )
 
-    if campo_tempo is None:
-        raise ValueError(
-            "Histórico sem timestamp. "
-            "É necessário ter a data/hora de cada leitura."
-        )
+    # Remover registros com datas inválidas
+    df = df.dropna(subset=["_tempo"])
+
+    # Organizar cronologicamente
+    df = df.sort_values("_tempo").reset_index(drop=True)
 
     def converter_data(valor):
 
