@@ -68,13 +68,14 @@ def buscar_dados():
 # TRATAMENTO DOS DADOS
 # ==========================================
 
+
 def preparar_dados(registros):
 
     df = pd.DataFrame(registros)
 
-    # O timestamp já vem convertido do ID do Firebase
+    # O timestamp é extraído do ID do Firebase
     if "timestamp" not in df.columns:
-        raise ValueError("Não foi possível identificar o timestamp.")
+        raise ValueError("Timestamp não encontrado.")
 
     df["_tempo"] = pd.to_datetime(
         df["timestamp"],
@@ -82,46 +83,16 @@ def preparar_dados(registros):
         errors="coerce"
     )
 
-    # Remover registros com datas inválidas
+    # Ordenar registros por data
     df = df.dropna(subset=["_tempo"])
-
-    # Organizar cronologicamente
     df = df.sort_values("_tempo").reset_index(drop=True)
 
-    def converter_data(valor):
-
-        if pd.isna(valor):
-            return pd.NaT
-
-        # Timestamp Unix
-        if isinstance(valor, (int, float, np.integer, np.floating)):
-            unidade = "ms" if abs(valor) > 100000000000 else "s"
-
-            return pd.to_datetime(
-                valor,
-                unit=unidade,
-                utc=True
-            )
-
-        return pd.to_datetime(
-            valor,
-            errors="coerce",
-            utc=True
-        )
-
-    df["_tempo"] = df[campo_tempo].apply(converter_data)
-
-    # Remover datas inválidas
-    df = df.dropna(subset=["_tempo"])
-
-    df = df.sort_values("_tempo").reset_index(drop=True)
-
-    # Identificar automaticamente os sensores numéricos
+    # Identificar sensores numéricos
     colunas = []
 
     for coluna in df.columns:
 
-        if coluna in [campo_tempo, "_tempo"]:
+        if coluna in ["timestamp", "_tempo", "hora", "minuto"]:
             continue
 
         valores = pd.to_numeric(
@@ -136,7 +107,7 @@ def preparar_dados(registros):
     if not colunas:
         raise ValueError("Nenhum sensor numérico encontrado.")
 
-    # Preencher leituras ausentes
+    # Preencher valores ausentes
     df[colunas] = df[colunas].interpolate(
         method="linear",
         limit_direction="both"
